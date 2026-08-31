@@ -2,15 +2,14 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import {
-  BarChart3, FileJson, ImagePlus, LogOut, PackagePlus,
+  BarChart3, FileJson, ImagePlus, PackagePlus,
   Pencil, Save, Trash2, Upload, X, Download, Loader2
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { ALL_TAGS, CATEGORIES, Category, Product, toRupiah } from "@/src/lib/constants";
-import { isAdminLoggedIn, setAdminLoggedIn } from "@/src/lib/admin-storage";
-import { useProductCatalog } from "@/src/components/ProductCatalogProvider";
+import { CATEGORIES, Category, Product, toRupiah } from "@/src/lib/constants";
+import LogoutButton from "@/src/components/LogoutButton";
 
-// Mendefinisikan nilai kosong untuk form, ditambah field 'image'
+
+// State awal form
 const EMPTY = {
   name: "",
   category: "Baju Adat" as Category,
@@ -19,58 +18,50 @@ const EMPTY = {
   desc: "",
   colors: [] as string[],
   sizes: [] as string[],
-  image: "" // Field baru untuk menampung URL gambar
+  image: "", // UI handle 1 gambar, API handle array
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeProduct(raw: any, index: number): Product | null {
-  if (!raw?.name || !raw?.category) return null;
-  const category: Category = ["Baju Adat", "Seragam", "Makeup"].includes(raw.category)
-    ? raw.category
-    : "Baju Adat";
-
-  return {
-    id: String(raw.id || `p-${Date.now()}-${index}`),
-    seed: Number(raw.seed || Date.now() + index),
-    name: String(raw.name),
-    category,
-    price: Number(raw.price || 0),
-    tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
-    desc: String(raw.desc || ""),
-    colors: Array.isArray(raw.colors) ? raw.colors.map(String) : [],
-    sizes: Array.isArray(raw.sizes) ? raw.sizes.map(String) : [],
-    image: String(raw.image || ""),
-  } as Product;
-}
-
 function splitList(value: string) {
-  return value.split(",").map(s => s.trim()).filter(Boolean);
+  return value.split(",").map(s => s.trimStart());
 }
 
 export default function AdminPage() {
-  const router = useRouter();
-  const { products, setProducts, resetProducts } = useProductCatalog();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
-  // States
-  const [isMounted, setIsMounted] = useState(false);
+
+  // States Form & UI
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [query, setQuery] = useState("");
-
-  // States untuk Upload
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  // States Upload
+  // const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Mencegah Hydration Mismatch & Cek Auth
+  // --- MENGAMBIL DATA DARI API ---
   useEffect(() => {
-    setIsMounted(true);
-    if (!isAdminLoggedIn()) {
-      router.replace("/admin/login");
-    }
-  }, [router]);
+    fetchProducts();
+  }, []);
 
-  // Fitur Pencarian
+  async function fetchProducts() {
+    setIsLoadingData(true);
+    try {
+      const res = await fetch("/api/products");
+      const json = await res.json();
+      if (json.success) {
+        setProducts(json.data);
+      }
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      notify("Gagal memuat data dari database.");
+    } finally {
+      setIsLoadingData(false);
+    }
+  }
+
+  // Pencarian & Kalkulasi
   const filtered = useMemo(() =>
     products.filter(p =>
       p.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -83,156 +74,202 @@ export default function AdminPage() {
   function resetForm() {
     setForm(EMPTY);
     setEditId(null);
-    setImageFile(null);
+    setImageFiles([]);
   }
 
   function notify(text: string) {
     setMessage(text);
-    window.setTimeout(() => setMessage(""), 2400);
+    window.setTimeout(() => setMessage(""), 3000);
   }
+  // Fungsi menghapus gambar yang sudah tersimpan di database
+  const removeSavedImage = (indexToRemove: number) => {
+    const updatedImages = form.image.filter((_: string, index: number) => index !== indexToRemove);
+    setForm({ ...form, image: updatedImages });
+  };
 
-  // --- FUNGSI SUBMIT DENGAN UPLOAD ---
+  // Fungsi menghapus gambar baru yang baru saja dipilih
+  const removeNewFile = (indexToRemove: number) => {
+    const updatedFiles = imageFiles.filter((_: File, index: number) => index !== indexToRemove);
+    setImageFiles(updatedFiles);
+  };
+
+  // --- FUNGSI SUBMIT (CREATE / UPDATE KE API) ---
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || !form.desc.trim() || form.price <= 0) {
-      notify("Lengkapi nama, deskripsi, dan harga.");
+    if (!form.name.trim() || form.price <= 0) {
+      notify("Lengkapi nama dan harga dengan benar.");
       return;
     }
 
     setIsUploading(true);
-    let finalImageUrl = form.image; // Jika sedang edit dan tidak ganti gambar, gunakan URL lama
+    // let finalImageUrl = form.image;
+    let finalImageUrls: string[] = Array.isArray(form.image) ? [...form.image] : [];
 
-    // 1. Eksekusi Upload API jika ada file baru yang dipilih
-    if (imageFile) {
+    // 1. Upload Gambar jika ada file baru
+    if (imageFiles.length > 0) {
       try {
         const formData = new FormData();
-        formData.append("file", imageFile);
 
-        // Memanggil route handler yang Anda buat (pastikan path-nya sesuai)
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData
+        // Append semua file ke dalam FormData
+        // Pastikan key "files" (atau "file") sesuai dengan yang diekspektasikan backend/API Anda
+        imageFiles.forEach((file) => {
+          formData.append("files", file);
         });
 
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
         const data = await res.json();
 
-        if (!res.ok) {
-          throw new Error(data.message || "Gagal upload gambar ke CDN.");
-        }
+        if (!res.ok) throw new Error(data.message || "Gagal upload gambar.");
 
-        // Sesuaikan 'data.url' dengan response dari CDN/API Route Anda
-        finalImageUrl = data.url || data.file_url || data.data?.url || "";
+        // Ekstrak semua URL dari response API
+        // Asumsi response CDN/API: { data: [{ url: '...' }, { url: '...' }] }
+        const uploadedUrls = data.data.map((img: { url: string }) => img.url);
+
+        // Gabungkan gambar lama dengan gambar yang baru diupload
+        // (Ubah jadi `finalImageUrls = uploadedUrls;` jika ingin replace total)
+        finalImageUrls = [...finalImageUrls, ...uploadedUrls];
+
       } catch (err) {
-        notify(err instanceof Error ? err.message : "Terjadi kesalahan saat upload.");
+        notify(err instanceof Error ? err.message : "Error saat upload.");
         setIsUploading(false);
-        return; // Hentikan proses simpan jika upload gambar gagal
+        return;
       }
     }
 
-    // 2. Simpan Data Produk ke State/Katalog
-    const product = {
+    // 2. Siapkan Payload (Sesuaikan dengan Schema Mongoose)
+    const payload = {
       ...form,
-      image: finalImageUrl,
-      id: editId || `p-${Date.now()}`,
-      seed: editId
-        ? (products.find(p => p.id === editId)?.seed || Date.now())
-        : Date.now()
-    } as Product;
+      image: finalImageUrls, // Schema image berupa array of string
+    };
 
-    setProducts(editId
-      ? products.map(p => p.id === editId ? product : p)
-      : [product, ...products]
-    );
+    // 3. Simpan ke Database
+    try {
+      const url = editId ? `/api/products/${editId}` : "/api/products";
+      const method = editId ? "PUT" : "POST";
 
-    notify(editId ? "Produk berhasil diperbarui." : "Produk berhasil ditambahkan.");
-    resetForm();
-    setIsUploading(false);
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Gagal menyimpan data");
+
+      notify(editId ? "Produk diperbarui." : "Produk ditambahkan.");
+      resetForm();
+      fetchProducts(); // Refresh list produk dari DB
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Error");
+    } finally {
+      setIsUploading(false);
+    }
   }
 
   // --- FUNGSI EDIT ---
   function edit(product: Product) {
     setEditId(product.id);
-    setImageFile(null); // Kosongkan file input agar tidak menimpa gambar tanpa disengaja
+    setImageFiles([]);
     setForm({
       name: product.name,
       category: product.category,
       price: product.price,
-      tags: product.tags,
-      desc: product.desc,
-      colors: product.colors,
-      sizes: product.sizes,
-      // @ts-ignore (Jika image belum di-define di interface Product utama)
-      image: product.image || ""
+      tags: product.tags || [],
+      desc: product.desc || "",
+      colors: product.colors || [],
+      sizes: product.sizes || [],
+      image: product.image || [] 
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function remove(id: string) {
-    if (!window.confirm("Hapus produk ini dari katalog?")) return;
-    setProducts(products.filter(p => p.id !== id));
-    notify("Produk dihapus.");
-    if (editId === id) resetForm();
+  // --- FUNGSI HAPUS ---
+  async function remove(id: string) {
+    if (!window.confirm("Hapus produk ini secara permanen dari database?")) return;
+
+    setIsUploading(true);
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Gagal menghapus produk");
+
+      notify("Produk dihapus.");
+      if (editId === id) resetForm();
+      fetchProducts(); // Refresh tabel
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Error");
+    } finally {
+      setIsUploading(false);
+    }
   }
 
+  // --- FUNGSI IMPORT (BATCH POST) ---
   function handleImport(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
+        setIsUploading(true);
         const text = String(reader.result || "");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let parsed: any[];
 
         if (file.name.toLowerCase().endsWith(".json")) {
           const json = JSON.parse(text);
-          parsed = Array.isArray(json) ? json : (Array.isArray(json.products) ? json.products : []);
+          parsed = Array.isArray(json) ? json : json.products || [];
         } else {
+          // CSV Parser sederhana
           const lines = text.split(/\r?\n/).filter(Boolean);
           const headers = (lines.shift() || "").split(",").map(v => v.trim());
           parsed = lines.map(line => {
             const cells = line.match(/(?:"([^"]*)")|([^,]+)/g)?.map(x => x.replace(/^"|"$/g, "")) || [];
             return Object.fromEntries(headers.map((h, i) => [h, cells[i] || ""]));
           });
-          parsed = parsed.map(p => ({
-            ...p,
-            tags: splitList(p.tags || ""),
-            colors: splitList(p.colors || ""),
-            sizes: splitList(p.sizes || "")
-          }));
         }
 
-        const imported = parsed.map(normalizeProduct).filter(Boolean) as Product[];
-        if (!imported.length) throw new Error("Tidak ada data valid.");
+        // Simpan setiap item ke DB melalui Promise.all agar cepat
+        const uploadPromises = parsed.map(async (p: any) => {
+          const payload = {
+            name: p.name,
+            category: p.category || "Baju Adat",
+            price: Number(p.price || 0),
+            desc: p.desc || "",
+            tags: form.tags.map(t => t.trim()).filter(Boolean),
+            colors: form.colors.map(c => c.trim()).filter(Boolean),
+            sizes: form.sizes.map(s => s.trim()).filter(Boolean),
+            image: Array.isArray(p.image) ? p.image : p.image ? [p.image] : [],
+          };
 
-        setProducts(imported);
-        notify(`${imported.length} produk berhasil diimpor.`);
+          return fetch("/api/products", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        });
+
+        await Promise.all(uploadPromises);
+        notify("Proses import selesai!");
+        fetchProducts();
       } catch (err) {
-        notify(err instanceof Error ? `Import gagal: ${err.message}` : "Import gagal.");
+        notify(err instanceof Error ? err.message : "Error");
+      } finally {
+        setIsUploading(false);
+        event.target.value = "";
       }
-      event.target.value = "";
     };
     reader.readAsText(file);
   }
 
+  // --- FUNGSI EXPORT ---
   function exportJson() {
     const blob = new Blob([JSON.stringify(products, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "heriyati-products.json";
+    a.download = "heriyati-products-db.json";
     a.click();
     URL.revokeObjectURL(url);
   }
-
-  function logout() {
-    setAdminLoggedIn(false);
-    router.replace("/admin/login");
-  }
-
-  // Mencegah error render di server-side saat mengakses localStorage
-  if (!isMounted || !isAdminLoggedIn()) return null;
 
   return (
     <main className="admin-page">
@@ -242,9 +279,7 @@ export default function AdminPage() {
           <h1 className="display-font">Admin Dashboard</h1>
         </div>
         <div className="admin-actions">
-          <button className="admin-ghost-button" onClick={logout}>
-            <LogOut size={16} /> Keluar
-          </button>
+          <LogoutButton />
         </div>
       </header>
 
@@ -266,7 +301,6 @@ export default function AdminPage() {
       </section>
 
       <div className="admin-layout">
-
         {/* --- FORM PANEL --- */}
         <section className="admin-panel">
           <div className="admin-panel-head">
@@ -282,6 +316,7 @@ export default function AdminPage() {
           </div>
 
           <form className="admin-product-form" onSubmit={submit}>
+            {/* Field Nama */}
             <label>
               Nama produk
               <input
@@ -289,10 +324,12 @@ export default function AdminPage() {
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 placeholder="Contoh: Kebaya Sunda Ratri"
                 disabled={isUploading}
+                required
               />
             </label>
 
             <div className="admin-two-col">
+              {/* Field Kategori */}
               <label>
                 Kategori
                 <select
@@ -305,6 +342,7 @@ export default function AdminPage() {
                   ))}
                 </select>
               </label>
+              {/* Field Harga */}
               <label>
                 Harga
                 <input
@@ -314,6 +352,7 @@ export default function AdminPage() {
                   onChange={e => setForm({ ...form, price: Number(e.target.value) })}
                   placeholder="850000"
                   disabled={isUploading}
+                  required
                 />
               </label>
             </div>
@@ -360,23 +399,89 @@ export default function AdminPage() {
               </label>
             </div>
 
-            <label>
-              Foto produk <span className="admin-help">akan diupload ke CDN</span>
-              <div className="admin-upload-box">
-                <ImagePlus size={20} />
-                <span>
-                  {imageFile
-                    ? imageFile.name
-                    : form.image
-                      ? "Gambar tersimpan (Pilih file baru untuk mengganti)"
-                      : "Pilih file gambar"}
+            <label className="block mb-4">
+              Foto produk <span className="admin-help">akan diupload ke CDN (Bisa pilih banyak)</span>
+
+              <div className="block mb-4">
+                <span className="block font-medium mb-1">
+                  Foto produk <span className="admin-help">akan diupload ke CDN (Bisa pilih banyak)</span>
                 </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={e => setImageFile(e.target.files?.[0] || null)}
-                  disabled={isUploading}
-                />
+
+                {/* 1. Preview Gambar Tersimpan (Dari Database) */}
+                {form.image && form.image.length > 0 && (
+                  <div className="flex flex-wrap gap-2 my-3">
+                    {form.image.map((imgUrl: string, index: number) => (
+                      <div key={`saved-${index}`} className="relative w-24 h-24 group">
+                        <img
+                          src={imgUrl}
+                          alt={`Tersimpan ${index + 1}`}
+                          className="w-full h-full object-cover rounded-md border border-gray-300"
+                        />
+                        {/* Tombol Hapus */}
+                        <button
+                          type="button"
+                          onClick={() => removeSavedImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition-opacity"
+                          title="Hapus gambar ini"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 2. Preview File Baru (Sebelum Diupload) */}
+                {imageFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 my-3">
+                    {imageFiles.map((file: File, index: number) => (
+                      <div key={`new-${index}`} className="relative w-24 h-24 group">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Baru ${index + 1}`}
+                          className="w-full h-full object-cover rounded-md border-2 border-blue-500"
+                        />
+                        <span className="absolute bottom-0 left-0 w-full bg-blue-500/80 text-white text-[10px] py-0.5 text-center rounded-b-sm">
+                          Baru
+                        </span>
+                        {/* Tombol Hapus */}
+                        <button
+                          type="button"
+                          onClick={() => removeNewFile(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition-opacity"
+                          title="Batal upload gambar ini"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Area Upload Dropzone (Dibungkus label agar input file bisa diklik) */}
+                <label className="admin-upload-box mt-2 cursor-pointer block">
+                  <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50">
+                    <ImagePlus size={24} className="text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-600">
+                      Klik untuk menambah gambar
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden" // Sembunyikan input asli
+                      onChange={e => {
+                        if (e.target.files) {
+                          // Gabungkan file yang sudah dipilih sebelumnya dengan file yang baru dipilih
+                          setImageFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                        }
+                        // Reset value input agar file yang sama bisa dipilih lagi jika baru saja dihapus
+                        e.target.value = '';
+                      }}
+                      disabled={isUploading}
+                    />
+                  </div>
+                </label>
               </div>
             </label>
 
@@ -417,7 +522,7 @@ export default function AdminPage() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Cari produk..."
-            disabled={isUploading}
+            disabled={isUploading || isLoadingData}
           />
 
           <div className="admin-table-wrap">
@@ -431,52 +536,68 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(product => (
-                  <tr key={product.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {/* Menampilkan thumbnail kecil jika ada gambarnya */}
-                        {/* @ts-ignore */}
-                        {product.image ? (
-                          // @ts-ignore
-                          <img src={product.image} alt={product.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
-                        ) : (
-                          <div style={{ width: '40px', height: '40px', backgroundColor: '#eee', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <ImagePlus size={16} color="#aaa" />
-                          </div>
-                        )}
-                        <div>
-                          <strong>{product.name}</strong>
-                          <small style={{ display: 'block' }}>{product.tags.join(" · ") || "Tanpa tag"}</small>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="admin-category-badge">{product.category}</span>
-                    </td>
-                    <td>{toRupiah(product.price)}</td>
-                    <td>
-                      <div className="admin-row-actions">
-                        <button
-                          className="admin-icon-button"
-                          onClick={() => edit(product)}
-                          aria-label={`Edit ${product.name}`}
-                          disabled={isUploading}
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          className="admin-icon-button danger"
-                          onClick={() => remove(product.id)}
-                          aria-label={`Hapus ${product.name}`}
-                          disabled={isUploading}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
+                {isLoadingData ? (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: "center", padding: "2rem" }}>
+                      <Loader2 className="animate-spin" size={24} style={{ margin: "0 auto" }} />
+                      <p style={{ marginTop: "0.5rem" }}>Memuat database...</p>
                     </td>
                   </tr>
-                ))}
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+                      Tidak ada produk ditemukan.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map(product => (
+                    <tr key={product.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {product.image?.length > 0 ? (
+                            <img
+                              src={product.image[0]}
+                              alt={product.name}
+                              style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
+                            />
+                          ) : (
+                            <div style={{ width: '40px', height: '40px', backgroundColor: '#eee', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <ImagePlus size={16} color="#aaa" />
+                            </div>
+                          )}
+                          <div>
+                            <strong>{product.name}</strong>
+                            <small style={{ display: 'block' }}>{product.tags?.join(" · ") || "Tanpa tag"}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="admin-category-badge">{product.category}</span>
+                      </td>
+                      <td>{toRupiah(product.price)}</td>
+                      <td>
+                        <div className="admin-row-actions">
+                          <button
+                            className="admin-icon-button"
+                            onClick={() => edit(product)}
+                            aria-label={`Edit ${product.name}`}
+                            disabled={isUploading}
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            className="admin-icon-button danger"
+                            onClick={() => remove(product.id)}
+                            aria-label={`Hapus ${product.name}`}
+                            disabled={isUploading}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -484,21 +605,13 @@ export default function AdminPage() {
           <div className="admin-tools">
             <button
               className="admin-ghost-button"
-              onClick={() => {
-                if (window.confirm("Kembalikan produk ke data awal?")) resetProducts();
-              }}
-              disabled={isUploading}
+              onClick={fetchProducts}
+              disabled={isUploading || isLoadingData}
             >
-              Reset ke Data Awal
+              Refresh Data dari Database
             </button>
           </div>
         </section>
-      </div>
-
-      <div className="admin-import-help">
-        <b>Format JSON:</b> array produk dengan field <code>name</code>, <code>category</code>,
-        <code>price</code>, <code>tags</code>, <code>desc</code>, <code>colors</code>, <code>sizes</code>,
-        dan <code>image</code> (opsional). CSV memakai header yang sama; field array dipisahkan koma.
       </div>
     </main>
   );

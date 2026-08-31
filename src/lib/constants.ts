@@ -20,7 +20,7 @@ export const CATEGORY_ACCENT = {
 } as const;
 
 export const ALL_TAGS = ["#Premium", "#Jawa", "#Sunda", "#Minimalist", "#Promo"] as const;
-export const CATEGORIES = ["Semua", "Baju Adat", "Seragam", "Makeup"] as const;
+export const CATEGORIES = ["Semua", "Baju Adat", "Seragam", "Makeup Wisuda", "Makeup Wedding"] as const;
 export const WA_PHONE = "6281234567890";
 
 export type Category = keyof typeof CATEGORY_ACCENT;
@@ -35,6 +35,7 @@ export type Product = {
   colors: string[];
   sizes: string[];
   seed: number;
+  image: string[];
 };
 
 export type CartItem = Product & {
@@ -53,6 +54,7 @@ export const PRODUCTS: Product[] = [
     desc: "Kebaya encim modifikasi dengan bordir tangan, dipadukan kain batik motif mega mendung. Cocok untuk akad maupun resepsi.",
     colors: ["Ivory", "Maroon", "Sage"],
     sizes: ["S", "M", "L", "XL"],
+    image: ["/images/p1/1.jpg", "/images/p1/2.jpg", "/images/p1/3.jpg"],
     seed: 1,
   },
   {
@@ -64,6 +66,7 @@ export const PRODUCTS: Product[] = [
     desc: "Beskap katun premium dengan kancing kuningan, dilengkapi blangkon dan keris tiruan. Potongan slim modern.",
     colors: ["Hitam", "Maroon"],
     sizes: ["M", "L", "XL", "XXL"],
+    image: ["/images/p1/1.jpg", "/images/p1/2.jpg", "/images/p1/3.jpg"],
     seed: 2,
   },
   {
@@ -75,6 +78,7 @@ export const PRODUCTS: Product[] = [
     desc: "Dress satin jatuh dengan potongan A-line, tersedia banyak ukuran untuk kebutuhan seragam keluarga dalam jumlah besar.",
     colors: ["Dusty Pink", "Sage", "Ivory"],
     sizes: ["XS", "S", "M", "L", "XL"],
+    image: ["/images/p1/1.jpg", "/images/p1/2.jpg", "/images/p1/3.jpg"],
     seed: 3,
   },
   {
@@ -86,6 +90,7 @@ export const PRODUCTS: Product[] = [
     desc: "Kemeja batik cap untuk seragam keluarga besar, bahan adem dan tidak mudah kusut, cocok dipakai seharian acara.",
     colors: ["Navy", "Maroon"],
     sizes: ["S", "M", "L", "XL", "XXL"],
+    image: ["/images/p1/1.jpg", "/images/p1/2.jpg", "/images/p1/3.jpg"],
     seed: 4,
   },
   {
@@ -97,6 +102,7 @@ export const PRODUCTS: Product[] = [
     desc: "Riasan pengantin natural glowing untuk sesi akad, termasuk trial makeup dan penataan sanggul modern.",
     colors: ["Natural", "Soft Glam"],
     sizes: ["Sesi Pagi", "Sesi Siang"],
+    image: ["/images/p1/1.jpg", "/images/p1/2.jpg", "/images/p1/3.jpg"],
     seed: 5,
   },
   {
@@ -108,6 +114,7 @@ export const PRODUCTS: Product[] = [
     desc: "Riasan bold tahan lama untuk resepsi, termasuk touch-up on-site dan penataan rambut sesuai tema pesta.",
     colors: ["Bold Glam", "Korean Glow"],
     sizes: ["Sesi Siang", "Sesi Malam"],
+    image: ["/images/p1/1.jpg", "/images/p1/2.jpg", "/images/p1/3.jpg"],
     seed: 6,
   },
   {
@@ -119,6 +126,7 @@ export const PRODUCTS: Product[] = [
     desc: "Kebaya brokat dengan songket asli tenun tangan, detail payet halus di bagian dada dan lengan.",
     colors: ["Gold", "Ivory"],
     sizes: ["S", "M", "L"],
+    image: ["/images/p1/1.jpg", "/images/p1/2.jpg", "/images/p1/3.jpg"],
     seed: 7,
   },
   {
@@ -130,6 +138,7 @@ export const PRODUCTS: Product[] = [
     desc: "Kemeja lengan panjang dengan saku dada, motif garis halus, nyaman dipakai untuk acara outdoor maupun indoor.",
     colors: ["Putih", "Navy"],
     sizes: ["M", "L", "XL"],
+    image: ["/images/p1/1.jpg", "/images/p1/2.jpg", "/images/p1/3.jpg"],
     seed: 8,
   },
 ];
