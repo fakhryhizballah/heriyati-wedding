@@ -1,32 +1,50 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
+import mongoose, {
+  Document,
+  Model,
+  Schema,
+} from "mongoose";
 
-export interface IHeartDocument extends Document {
-  key: string;
-  count: number;
+export interface IHeart extends Document {
+  visitorId: string;
+  productId: string;
+  createdAt: Date;
 }
 
-const HeartSchema = new Schema<IHeartDocument>(
+const HeartSchema = new Schema<IHeart>(
   {
-    key: {
+    visitorId: {
       type: String,
       required: true,
-      unique: true,
-      default: "wedding",
+      index: true,
     },
-    count: {
-      type: Number,
+
+    productId: {
+      type: String,
       required: true,
-      default: 0,
-      min: 0,
+      index: true,
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: true,
+      updatedAt: false,
+    },
+  }
+);
+
+// Satu visitor hanya boleh heart satu produk sekali.
+HeartSchema.index(
+  {
+    visitorId: 1,
+    productId: 1,
+  },
+  {
+    unique: true,
   }
 );
 
 const HeartModel =
-  (mongoose.models.Heart as Model<IHeartDocument>) ||
-  mongoose.model<IHeartDocument>("Heart", HeartSchema);
+  (mongoose.models.Heart as Model<IHeart>) ||
+  mongoose.model<IHeart>("Heart", HeartSchema);
 
 export default HeartModel;

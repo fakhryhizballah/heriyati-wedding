@@ -39,7 +39,7 @@ export default function HomeView({
         });
 
         if (!res.ok) {
-          throw new Error("Gagal mengambil heart count");
+          // throw new Error("Gagal mengambil heart count");
         }
 
         const json = await res.json();

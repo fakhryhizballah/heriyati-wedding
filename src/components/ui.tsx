@@ -100,7 +100,7 @@ export function HeartButton({
           fill={active ? COLOR.maroon : "none"}
         />
       </button>
-
+      {/*
       <span
         className="body-font"
         style={{
@@ -111,7 +111,7 @@ export function HeartButton({
         }}
       >
         {count.toLocaleString("id-ID")}
-      </span>
+      </span> */}
     </div>
   );
 }
