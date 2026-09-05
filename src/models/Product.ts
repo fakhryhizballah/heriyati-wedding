@@ -1,48 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-// ==========================================
-// 1. Definisikan Data/Konstanta Asli Anda
-// ==========================================
-export const COLOR = {
-  maroon: "#800000",
-  brass: "#B5A642",
-  blush: "#DE5D83",
-} as const;
-
-export const CATEGORY_ACCENT = {
-  "Baju Adat": COLOR.maroon,
-  Seragam: COLOR.brass,
-  Makeup: COLOR.blush,
-} as const;
-
-// export const ALL_TAGS = ["#Premium", "#Jawa", "#Sunda", "#Minimalist", "#Promo"] as const;
-export const CATEGORIES = ["Semua", "Baju Adat", "Seragam", "Makeup"] as const;
-export const WA_PHONE = "6281234567890";
-
-// ==========================================
-// 2. Tipe Data TypeScript
-// ==========================================
-export type Category = keyof typeof CATEGORY_ACCENT;
-
-export type Product = {
-  id: string;
-  name: string;
-  category: Category;
-  price: number;
-  tags: string[];
-  desc: string;
-  colors: string[];
-  sizes: string[];
-  seed: number;
-  image: string[];
-};
-
-export type CartItem = Product & {
-  color: string;
-  size: string;
-  qty: number;
-};
-
 export interface IProductDocument extends Omit<Product, "id">, Document {}
 
 // ==========================================
@@ -58,10 +15,6 @@ const ProductSchema = new Schema<IProductDocument>(
     category: { 
       type: String, 
       required: [true, "Kategori wajib diisi"],
-      enum: {
-        values: Object.keys(CATEGORY_ACCENT),
-        message: "{VALUE} bukan kategori yang valid"
-      }
     },
     price: { 
       type: Number, 
@@ -70,10 +23,6 @@ const ProductSchema = new Schema<IProductDocument>(
     },
     tags: { 
       type: [String], 
-    //   enum: {
-    //     values: [...ALL_TAGS], // Membatasi input array tags sesuai dengan konstanta ALL_TAGS
-    //     message: "{VALUE} bukan tag yang valid"
-    //   },
       default: [] 
     },
     desc: { 
