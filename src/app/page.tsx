@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import BottomNav, { View } from "@/src/components/BottomNav";
 import CartView from "@/src/components/CartView";
 import HomeView from "@/src/components/HomeView";
@@ -15,9 +15,44 @@ export default function HomePage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { products } = useProductCatalog();
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(
+        "heriyati-wedding-wishlist"
+      );
+
+      if (!saved) return;
+
+      const ids = JSON.parse(saved);
+
+      if (Array.isArray(ids)) {
+        setWishlist(new Set(ids));
+      }
+    } catch (error) {
+      console.error(
+        "Gagal membaca wishlist:",
+        error
+      );
+    }
+  }, []);
 
   function toggleWishlist(id: string) {
-    setWishlist(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+    setWishlist((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      localStorage.setItem(
+        "heriyati-wedding-wishlist",
+        JSON.stringify([...next])
+      );
+
+      return next;
+    });
   }
   function addToCart(item: CartItem) { setCart(prev => [...prev, item]); }
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);

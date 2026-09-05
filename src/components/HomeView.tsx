@@ -7,6 +7,7 @@ import { COLOR, Product } from "@/src/lib/constants";
 import ProductCard from "./ProductCard";
 import { Pill, StitchDivider } from "./ui";
 
+
 export default function HomeView({
   wishlist,
   toggleWishlist,
@@ -27,6 +28,33 @@ export default function HomeView({
   const [category, setCategory] = useState("Semua");
   const [tags, setTags] = useState<string[]>([]);
   const [sort, setSort] = useState("newest");
+  // Global heart count
+  const [heartCount, setHeartCount] = useState(0);
+  useEffect(() => {
+    async function loadHeartCount() {
+      try {
+        const res = await fetch("/api/heart", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          throw new Error("Gagal mengambil heart count");
+        }
+
+        const json = await res.json();
+
+        if (json.success) {
+          setHeartCount(Number(json.data?.count ?? 0));
+        }
+      } catch (error) {
+        console.error("Gagal mengambil jumlah heart:", error);
+      }
+    }
+
+    void loadHeartCount();
+
+  }, []);
 
   useEffect(() => {
     async function fetchProducts() {

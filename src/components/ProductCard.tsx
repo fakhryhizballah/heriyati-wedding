@@ -19,6 +19,14 @@ export default function ProductCard({
 
   // Ambil URL gambar pertama dari array, gunakan fallback kosong jika tidak ada
   const imageUrl = product.image && product.image.length > 0 ? product.image[0] : "";
+  function handleWishlist(
+    event?: React.MouseEvent
+  ) {
+    event?.stopPropagation();
+
+    onToggleWishlist(product.id);
+
+  }
 
   return (
     <article className="product-card" onClick={() => onOpen(product)}>
@@ -32,14 +40,12 @@ export default function ProductCard({
           backgroundPosition: 'center'
         }}
       >
-        <div style={{ position: "absolute", top: 8, right: 8 }}>
+        <div style={{ position: "absolute", top: 8, right: 8 }} onClick={(event) =>
+          event.stopPropagation()
+        }>
           <HeartButton
             active={wishlisted}
-            onClick={(e) => {
-              // Mencegah klik tombol love membuka modal detail produk
-              e.stopPropagation();
-              onToggleWishlist(product.id);
-            }}
+            onClick={() => handleWishlist()}
           />
         </div>
         <div className="product-badge" style={{ backgroundColor: accent, color: COLOR.paper }}>
