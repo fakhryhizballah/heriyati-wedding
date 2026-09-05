@@ -53,20 +53,17 @@ export function Pill({
 
 export function HeartButton({
   active,
-  count = 0, // Provide a default value of 0
+  count = 0,
   onClick,
 }: {
   active: boolean;
-  count?: number; // Make count optional
+    count?: number;
   onClick: () => void;
 }) {
   const [bump, setBump] = useState(false);
 
   const handleClick = () => {
-    if (active) return;
-
     setBump(true);
-
     onClick();
 
     window.setTimeout(() => {
@@ -89,12 +86,11 @@ export function HeartButton({
           e.stopPropagation();
           handleClick();
         }}
-        disabled={active}
-        aria-label={active ? "Sudah memberi heart" : "Beri heart"}
+        aria-label={active ? "Batalkan heart" : "Beri heart"}
         style={{
           transform: bump ? "scale(1.25)" : "scale(1)",
           opacity: active ? 1 : 0.9,
-          cursor: active ? "default" : "pointer",
+          cursor: "pointer",
         }}
       >
         <Heart
