@@ -6,7 +6,7 @@ import dbConnect from "@/src/lib/mongodb";
 //   params: { id: string };
 // }
 type RouteParams = { params: Promise<{ id: string }> };
-export async function GET(req: Request, { params }: RouteParams) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
     await dbConnect();
     const product = await ProductModel.findById(params.id);
