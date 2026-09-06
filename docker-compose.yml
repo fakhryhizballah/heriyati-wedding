@@ -1,0 +1,28 @@
+# docker-compose.dev.yml
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      # dockerfile: Dockerfile
+    container_name: heriyati-wedding-dev
+    # container_name: heriyati-wedding
+    ports:
+      - "3000:3000"
+    environment:
+      # - NODE_ENV=development
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    env_file:
+      - .env
+    volumes:
+      # Mount seluruh source code untuk hot reload
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
