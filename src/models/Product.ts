@@ -1,4 +1,20 @@
+// 1. Tambahkan import untuk tipe Product dari lokasi file Anda
+// Misalnya: import { Product } from "@/types";
+
 import mongoose, { Schema, Document, Model } from "mongoose";
+
+export interface Product {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  tags?: string[];
+  desc?: string;
+  colors?: string[];
+  sizes?: string[];
+  seed?: number;
+  image?: string[];
+}
 
 export interface IProductDocument extends Omit<Product, "id">, Document {}
 
@@ -21,39 +37,24 @@ const ProductSchema = new Schema<IProductDocument>(
       required: [true, "Harga wajib diisi"],
       min: [0, "Harga tidak boleh minus"]
     },
-    tags: { 
-      type: [String], 
-      default: [] 
-    },
-    desc: { 
-      type: String, 
-      default: "" 
-    },
-    colors: { 
-      type: [String], 
-      default: [] 
-    },
-    sizes: { 
-      type: [String], 
-      default: [] 
-    },
-    seed: { 
-      type: Number, 
-      default: 0 
-    },
-    image: { 
-      type: [String], 
-      default: [] 
-    },
+    tags: { type: [String], default: [] },
+    desc: { type: String, default: "" },
+    colors: { type: [String], default: [] },
+    sizes: { type: [String], default: [] },
+    seed: { type: Number, default: 0 },
+    image: { type: [String], default: [] },
   },
   {
     timestamps: true,
     toJSON: {
-      virtuals: true, // Memastikan virtual properties (jika ada) ikut ter-render
+      virtuals: true,
       transform: (doc, ret) => {
-        ret.id = ret._id.toString();
-        delete ret._id;
-        delete ret.__v;
+        // Tambahkan (ret as any) saat mendefinisikan .id
+        (ret as any).id = ret._id.toString();
+        
+        delete (ret as any)._id;
+        delete (ret as any).__v;
+        
         return ret;
       },
     },
@@ -61,9 +62,8 @@ const ProductSchema = new Schema<IProductDocument>(
 );
 
 // ==========================================
-// 4. Export Model (Pencegahan Duplikasi Next.js HMR)
+// 4. Export Model
 // ==========================================
-// Penambahan explicit typing <Model<IProductDocument>> untuk mencegah error TS pada mongoose.models
 const ProductModel = (mongoose.models.Product as Model<IProductDocument>) || 
                      mongoose.model<IProductDocument>("Product", ProductSchema);
 

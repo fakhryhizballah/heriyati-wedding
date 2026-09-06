@@ -7,7 +7,12 @@ import { COLOR, Product } from "@/src/lib/constants";
 import ProductCard from "./ProductCard";
 import { Pill, StitchDivider } from "./ui";
 
-
+interface HomeViewProps {
+  wishlist: Set<string>;
+  toggleWishlist: (id: string) => void;
+  onOpenProduct: (product: Product) => void;
+  products?: Product[]; // opsional, jika Anda ingin menambahkan
+}
 export default function HomeView({
   wishlist,
   toggleWishlist,
@@ -65,13 +70,18 @@ export default function HomeView({
         if (json.success && Array.isArray(json.data)) {
           setProducts(json.data);
 
-          // Mengekstrak kategori unik dari data produk API
-          const uniqueCategories = Array.from(new Set(json.data.map((p: Product) => p.category).filter(Boolean)));
+          // Tambahkan assertion 'as string[]' agar TS tahu hasil filter adalah string
+          const categories = json.data
+            .map((p: Product) => p.category)
+            .filter(Boolean) as string[];
+
+          // Definisikan generic <string> pada Set
+          const uniqueCategories = Array.from(new Set<string>(categories));
           setCategoriesList(["Semua", ...uniqueCategories]);
 
-          // Mengekstrak semua tag unik dari data produk API
-          const allTags = json.data.flatMap((p: Product) => p.tags || []);
-          const uniqueTags = Array.from(new Set(allTags));
+          // Lakukan hal yang sama untuk tags
+          const allTags = json.data.flatMap((p: Product) => p.tags || []) as string[];
+          const uniqueTags = Array.from(new Set<string>(allTags));
           setTagsList(uniqueTags);
         }
       } catch (error) {

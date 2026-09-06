@@ -31,8 +31,12 @@ export default function ProductSheet({ product, onClose, onAddToCart, wishlisted
 
   function handleClose() { setVisible(false); window.setTimeout(onClose, 220); }
   function handleAdd() {
-    // if (!color || !size) { setWarn(true); window.setTimeout(() => setWarn(false), 1600); return; }
-    onAddToCart({ ...product, color, size, qty });
+    onAddToCart({
+      ...product,
+      color: color ?? "", // Jika null, ubah jadi string kosong
+      size: size ?? "",   // Jika null, ubah jadi string kosong
+      qty
+    });
     handleClose();
   }
 

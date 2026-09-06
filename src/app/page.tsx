@@ -58,7 +58,11 @@ export default function HomePage() {
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
 
   return <main className="app-shell">
-    {view === "home" && <HomeView products={products} wishlist={wishlist} toggleWishlist={toggleWishlist} onOpenProduct={setSelectedProduct} />}
+    {view === "home" && <HomeView
+      wishlist={wishlist}
+      toggleWishlist={toggleWishlist}
+      onOpenProduct={(product) => setSelectedProduct(product)}
+    />}
     {view === "cart" && <CartView cart={cart} setCart={setCart} />}
     {view === "profile" && <ProfileView />}
     {selectedProduct && <ProductSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} onAddToCart={addToCart} wishlisted={wishlist.has(selectedProduct.id)} onToggleWishlist={toggleWishlist} />}
