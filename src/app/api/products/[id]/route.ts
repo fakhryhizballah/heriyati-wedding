@@ -6,10 +6,11 @@ import dbConnect from "@/src/lib/mongodb";
 //   params: { id: string };
 // }
 type RouteParams = { params: Promise<{ id: string }> };
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: RouteParams) {
   try {
+    const { id } = await params;
     await dbConnect();
-    const product = await ProductModel.findById(params.id);
+    const product = await ProductModel.findById(id);
 
     if (!product) {
       return NextResponse.json({ success: false, message: "Produk tidak ditemukan" }, { status: 404 });
@@ -63,8 +64,8 @@ export async function PUT(req: Request, { params }: RouteParams) {
 export async function DELETE(req: Request, { params }: RouteParams) {
   try {
     await dbConnect();
-    
-    const deletedProduct = await ProductModel.findByIdAndDelete(params.id);
+    const { id } = await params; 
+    const deletedProduct = await ProductModel.findByIdAndDelete(id);
 
     if (!deletedProduct) {
       return NextResponse.json({ success: false, message: "Produk tidak ditemukan" }, { status: 404 });
