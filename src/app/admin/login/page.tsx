@@ -89,9 +89,6 @@ export default function AdminLoginPage() {
             {isLoading ? "Memproses..." : "Masuk ke Admin"}
           </button>
         </form>
-        <div className="admin-demo-note mt-4 text-sm text-gray-500">
-          Demo lokal: <b>admin</b> / <b>admin123</b>
-        </div>
       </div>
     </main>
   );

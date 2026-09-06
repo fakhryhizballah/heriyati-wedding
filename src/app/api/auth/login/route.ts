@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const { username, password } = await request.json();
 
     // TODO: Ganti dengan query validasi database (misal: Prisma/Mongoose)
-    if (username === 'admin' && password === 'admin123') {
+    if (username === 'admin' && password === 'admin8899') {
       
       // Generate JWT
       const token = await new SignJWT({ username, role: 'admin' })
